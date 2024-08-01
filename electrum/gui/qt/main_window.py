@@ -34,7 +34,7 @@ import base64
 from functools import partial
 import queue
 import asyncio
-from typing import Optional, TYPE_CHECKING, Sequence, List, Union, Dict, Set
+from typing import Optional, TYPE_CHECKING, Sequence, List, Union, Dict, Set, Mapping
 import concurrent.futures
 
 from PyQt5.QtGui import QPixmap, QKeySequence, QIcon, QCursor, QFont, QFontMetrics
@@ -104,9 +104,6 @@ from .balance_dialog import BalanceToolButton, COLOR_FROZEN, COLOR_UNMATURED, CO
 if TYPE_CHECKING:
     from electrum.simple_config import ConfigVarWithConfig
     from . import ElectrumGui
-
-
-LN_NUM_PAYMENT_ATTEMPTS = 10
 
 
 class StatusBarButton(QToolButton):
@@ -1106,7 +1103,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger, QtEventListener):
         self,
         tx: Transaction,
         *,
-        external_keypairs=None,
+        external_keypairs: Mapping[bytes, bytes] = None,
         payment_identifier: PaymentIdentifier = None,
     ):
         show_transaction(tx, parent=self, external_keypairs=external_keypairs, payment_identifier=payment_identifier)
@@ -1269,10 +1266,24 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger, QtEventListener):
         self.send_tab.broadcast_transaction(tx, payment_identifier=payment_identifier)
 
     @protected
-    def sign_tx(self, tx, *, callback, external_keypairs, password):
+    def sign_tx(
+        self,
+        tx: PartialTransaction,
+        *,
+        callback,
+        external_keypairs: Optional[Mapping[bytes, bytes]],
+        password,
+    ):
         self.sign_tx_with_password(tx, callback=callback, password=password, external_keypairs=external_keypairs)
 
-    def sign_tx_with_password(self, tx: PartialTransaction, *, callback, password, external_keypairs=None):
+    def sign_tx_with_password(
+        self,
+        tx: PartialTransaction,
+        *,
+        callback,
+        password,
+        external_keypairs: Mapping[bytes, bytes] = None,
+    ):
         '''Sign the transaction in a separate thread.  When done, calls
         the callback with a success code of True or False.
         '''
@@ -1847,7 +1858,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger, QtEventListener):
         else:
             msg = _(
                 "Warning: this wallet type does not support channel recovery from seed. "
-                "You will need to backup your wallet everytime you create a new channel. "
+                "You will need to backup your wallet every time you create a new channel. "
                 "Create lightning keys?")
         if self.question(msg):
             self._init_lightning_dialog(dialog=dialog)
@@ -1982,7 +1993,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger, QtEventListener):
         try:
             # This can throw on invalid base64
             sig = base64.b64decode(str(signature.toPlainText()))
-            verified = ecc.verify_message_with_address(address, sig, message)
+            verified = bitcoin.verify_usermessage_with_address(address, sig, message)
         except Exception as e:
             verified = False
         if verified:
@@ -2046,6 +2057,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger, QtEventListener):
         self.thread.add(task, on_success=setText)
 
     def do_encrypt(self, message_e, pubkey_e, encrypted_e):
+        from electrum import crypto
         message = message_e.toPlainText()
         message = message.encode('utf-8')
         try:
@@ -2054,7 +2066,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger, QtEventListener):
             self.logger.exception('Invalid Public key')
             self.show_warning(_('Invalid Public key'))
             return
-        encrypted = public_key.encrypt_message(message)
+        encrypted = crypto.ecies_encrypt_message(public_key, message)
         encrypted_e.setText(encrypted.decode('ascii'))
 
     def encrypt_message(self, address=''):
@@ -2332,7 +2344,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger, QtEventListener):
 
     def do_export_privkeys(self, fileName, pklist, is_csv):
         with open(fileName, "w+") as f:
-            os_chmod(fileName, 0o600)
+            os_chmod(fileName, 0o600)  # set restrictive perms *before* we write data
             if is_csv:
                 transaction = csv.writer(f)
                 transaction.writerow(["address", "private_key"])
