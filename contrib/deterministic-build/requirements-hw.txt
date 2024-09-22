@@ -8,7 +8,7 @@ btchip-python==0.1.32 \
     --hash=sha256:34f5e0c161c08f65dc0d070ba2ff4c315ed21c4b7e0faa32a46862d0dc1b8f55
 cbor2==5.6.0 \
     --hash=sha256:b893500db0fe033e570c3adc956af6eefc57e280026bd2d86fd53da9f1e594d7
-certifi==2024.2.2 \
+certifi==2024.7.4 \
     --hash=sha256:0569859f95fc761b18b45ef421b1290a0f65f147e92a1e5eb3e635f9a5e4e66f \
     --hash=sha256:dc383c07b76109f368f6106eee2b593b04a011ea4d55f652c6ca24a754d1cdd1
 cffi==1.16.0 \
@@ -276,7 +276,7 @@ hidapi==0.14.0 \
     --hash=sha256:f68bbf88805553911e7e5a9b91136c96a54042b6e3d82d39d733d2edb46ff9a6 \
     --hash=sha256:fb4e94e45f6dddb20d59501187721e5d3b02e6cc8a59d261dd5cac739008582a \
     --hash=sha256:fc9ec2321bf3b0b4953910aa87c0c8ab5f93b1f113a9d3d4f18845ce54708d13
-idna==3.6 \
+idna==3.7 \
     --hash=sha256:9ecdbbd083b06798ae1e86adcbfe8ab1479cf864e4ee30fe4e46a003d12491ca \
     --hash=sha256:c05567e9c24a6b9faaa835c4821bad0590fbb9d5779e7caa6e1cc4978e7eb24f
 keepkey==6.3.1 \
@@ -337,7 +337,7 @@ pycparser==2.21 \
 pyserial==3.5 \
     --hash=sha256:3c77e014170dfffbd816e6ffc205e9842efb10be9f58ec16d3e8675b4925cddb \
     --hash=sha256:c4451db6ba391ca6ca299fb3ec7bae67a5c55dde170964c7a14ceefec02f2cf0
-requests==2.31.0 \
+requests==2.32.2 \
     --hash=sha256:58cd2187c01e70e6e26505bca751777aa9f2ee0b7f4300988b709f44e013003f \
     --hash=sha256:942c5a758f98d790eaed1a29cb6eefc7ffb0d1cf7af05c3d2791656dbd6ad1e1
 safet==0.1.5 \
@@ -346,7 +346,7 @@ safet==0.1.5 \
 semver==3.0.2 \
     --hash=sha256:6253adb39c70f6e51afed2fa7152bcd414c411286088fb4b9effb133885ab4cc \
     --hash=sha256:b1ea4686fe70b981f85359eda33199d60c53964284e0cfb4977d243e37cf4bf4
-setuptools==65.5.1 \
+setuptools==70.0.0 \
     --hash=sha256:d0b9a8433464d5800cbe05094acf5c6d52a91bfac9b52bcfc4d41382be5d5d31 \
     --hash=sha256:e197a19aa8ec9722928f2206f8de752def0e4c9fc6953527360d1c36d94ddb2f
 six==1.16.0 \
@@ -358,9 +358,10 @@ trezor==0.13.9 \
 typing-extensions==4.9.0 \
     --hash=sha256:23478f88c37f27d76ac8aee6c905017a143b0b1b886c3c9f66bc2fd94f9f5783 \
     --hash=sha256:af72aea155e91adfc61c3ae9e0e342dbc0cba726d6cba4b6c72c1f34e47291cd
-urllib3==1.26.18 \
+urllib3==1.26.19 \
     --hash=sha256:34b97092d7e0a3a8cf7cd10e386f401b3737364026c45e622aa02903dffe0f07 \
     --hash=sha256:f8ecc1bba5667413457c529ab955bf8c67b45db799d159066261719e328580a0
 wheel==0.38.4 \
     --hash=sha256:965f5259b566725405b05e7cf774052044b1ed30119b5d586b2703aafe8719ac \
     --hash=sha256:b60533f3f5d530e971d6737ca6d58681ee434818fab630c83a734bb10c083ce8
+zipp>=3.19.1 # not directly required, pinned by Snyk to avoid a vulnerability
