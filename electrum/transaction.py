@@ -40,7 +40,9 @@ import itertools
 import binascii
 import copy
 
-from . import ecc, bitcoin, constants, segwit_addr, bip32
+import electrum_ecc as ecc
+
+from . import bitcoin, constants, segwit_addr, bip32
 from .bip32 import BIP32Node
 from .i18n import _
 from .util import profiler, to_bytes, bfh, chunks, is_hex_str, parse_max_spend
@@ -2286,7 +2288,7 @@ class PartialTransaction(Transaction):
                     break
                 if pubkey not in keypairs:
                     continue
-                _logger.info(f"adding signature for {pubkey}. spending utxo {txin.prevout.to_str()}")
+                _logger.info(f"adding signature for {pubkey.hex()}. spending utxo {txin.prevout.to_str()}")
                 sec = keypairs[pubkey]
                 sig = self.sign_txin(i, sec, sighash_cache=sighash_cache)
                 self.add_signature_to_txin(txin_idx=i, signing_pubkey=pubkey, sig=sig)

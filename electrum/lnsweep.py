@@ -5,16 +5,18 @@
 from typing import Optional, Dict, List, Tuple, TYPE_CHECKING, NamedTuple, Callable
 from enum import Enum, auto
 
+import electrum_ecc as ecc
+
 from .util import bfh
+from .crypto import privkey_to_pubkey
 from .bitcoin import redeem_script_to_address, dust_threshold, construct_witness
 from .invoices import PR_PAID
 from . import descriptor
-from . import ecc
 from .lnutil import (make_commitment_output_to_remote_address, make_commitment_output_to_local_witness_script,
                      derive_privkey, derive_pubkey, derive_blinded_pubkey, derive_blinded_privkey,
                      make_htlc_tx_witness, make_htlc_tx_with_open_channel, UpdateAddHtlc,
                      LOCAL, REMOTE, make_htlc_output_witness_script,
-                     get_ordered_channel_configs, privkey_to_pubkey, get_per_commitment_secret_from_seed,
+                     get_ordered_channel_configs, get_per_commitment_secret_from_seed,
                      RevocationStore, extract_ctn_from_tx_and_chan, UnableToDeriveSecret, SENT, RECEIVED,
                      map_htlcs_to_ctx_output_idxs, Direction)
 from .transaction import (Transaction, TxOutput, PartialTransaction, PartialTxInput,
@@ -343,7 +345,7 @@ def analyze_ctx(chan: 'Channel', ctx: Transaction):
 def create_sweeptxs_for_their_ctx(
         *, chan: 'Channel',
         ctx: Transaction,
-        sweep_address: str) -> Optional[Dict[str,SweepInfo]]:
+        sweep_address: str) -> Optional[Dict[str, SweepInfo]]:
     """Handle the case when the remote force-closes with their ctx.
     Sweep outputs that do not have a CSV delay ('to_remote' and first-stage HTLCs).
     Outputs with CSV delay ('to_local' and second-stage HTLCs) are redeemed by LNWatcher.
@@ -375,7 +377,7 @@ def create_sweeptxs_for_their_ctx(
     chan.logger.debug(f'(lnsweep) found their ctx: {to_local_address} {to_remote_address}')
     if is_revocation:
         our_revocation_privkey = derive_blinded_privkey(our_conf.revocation_basepoint.privkey, per_commitment_secret)
-        gen_tx = create_sweeptx_for_their_revoked_ctx(chan, ctx, per_commitment_secret, chan.sweep_address)
+        gen_tx = create_sweeptx_for_their_revoked_ctx(chan, ctx, per_commitment_secret, sweep_address)
         if gen_tx:
             tx = gen_tx()
             txs[tx.inputs()[0].prevout.to_str()] = SweepInfo(

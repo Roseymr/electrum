@@ -47,9 +47,11 @@ from PyQt6.QtWidgets import (QMessageBox, QSystemTrayIcon, QTabWidget,
                              QWidget, QSizePolicy, QStatusBar, QToolTip,
                              QMenu, QToolButton)
 
+import electrum_ecc as ecc
+
 import electrum
 from electrum.gui import messages
-from electrum import (keystore, ecc, constants, util, bitcoin, commands,
+from electrum import (keystore, constants, util, bitcoin, commands,
                       paymentrequest, lnutil)
 from electrum.bitcoin import COIN, is_address, DummyAddress
 from electrum.plugin import run_hook, BasePlugin
@@ -70,7 +72,7 @@ from electrum.network import Network, UntrustedServerReturnedError, NetworkExcep
 from electrum.exchange_rate import FxThread
 from electrum.simple_config import SimpleConfig
 from electrum.logging import Logger
-from electrum.lnutil import extract_nodeid, ConnStringFormatError
+from electrum.lntransport import extract_nodeid, ConnStringFormatError
 from electrum.lnaddr import lndecode
 from electrum.submarine_swaps import SwapServerError
 
@@ -88,7 +90,7 @@ from .util import (read_QIcon, ColorScheme, text_dialog, icon_path, WaitingDialo
                    import_meta_gui, export_meta_gui,
                    filename_field, address_field, char_width_in_lineedit, webopen,
                    TRANSACTION_FILE_EXTENSION_FILTER_ANY, MONOSPACE_FONT,
-                   getOpenFileName, getSaveFileName, BlockingWaitingDialog, font_height)
+                   getOpenFileName, getSaveFileName, font_height)
 from .util import ButtonsLineEdit, ShowQRLineEdit
 from .util import QtEventListener, qt_event_listener, event_listener
 from .wizard.wallet import WIF_HELP_TEXT
@@ -299,26 +301,11 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger, QtEventListener):
             self._update_check_thread.checked.connect(on_version_received)
             self._update_check_thread.start()
 
-    def run_coroutine_dialog(self, coro, text, on_result, on_cancelled):
-        """ run coroutine in a waiting dialog, with a Cancel button that cancels the coroutine """
-        from electrum import util
-        loop = util.get_asyncio_loop()
-        assert util.get_running_loop() != loop, 'must not be called from asyncio thread'
-        future = asyncio.run_coroutine_threadsafe(coro, loop)
-        def task():
-            try:
-                return future.result()
-            except concurrent.futures.CancelledError:
-                on_cancelled()
-        try:
-            WaitingDialog(
-                self, text, task,
-                on_success=on_result,
-                on_error=self.on_error,
-                on_cancel=future.cancel)
-        except Exception as e:
-            self.show_error(str(e))
-            raise
+    def run_coroutine_dialog(self, coro, text):
+        """ run coroutine in a waiting dialog, with a Cancel button that cancels the coroutine"""
+        from .util import RunCoroutineDialog
+        d = RunCoroutineDialog(self, text, coro)
+        return d.run()
 
     def run_coroutine_from_thread(self, coro, name, on_result=None):
         if self._cleaned_up:
@@ -1178,10 +1165,9 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger, QtEventListener):
         if not self.wallet.lnworker.num_sats_can_send() and not self.wallet.lnworker.num_sats_can_receive():
             self.show_error(_("You do not have liquidity in your active channels."))
             return
-        def get_pairs_thread():
-            self.network.run_from_another_thread(self.wallet.lnworker.swap_manager.get_pairs())
         try:
-            BlockingWaitingDialog(self, _('Please wait...'), get_pairs_thread)
+            self.run_coroutine_dialog(
+                self.wallet.lnworker.swap_manager.get_pairs(), _('Please wait...'))
         except SwapServerError as e:
             self.show_error(str(e))
             return
@@ -2387,10 +2373,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger, QtEventListener):
 
         addresses = self.wallet.get_unused_addresses()
         if not addresses:
-            try:
-                addresses = self.wallet.get_receiving_addresses()
-            except AttributeError:
-                addresses = self.wallet.get_addresses()
+            addresses = self.wallet.get_receiving_addresses()
         h, address_e = address_field(addresses)
         vbox.addLayout(h)
 
@@ -2542,8 +2525,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger, QtEventListener):
         self.close_wallet()
 
         if self._update_check_thread:
-            self._update_check_thread.exit()
-            self._update_check_thread.wait()
+            self._update_check_thread.stop()
         if self.tray:
             self.tray = None
         self.gui_object.timer.timeout.disconnect(self.timer_actions)

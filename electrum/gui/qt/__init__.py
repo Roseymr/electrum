@@ -41,6 +41,7 @@ except Exception as e:
 from PyQt6.QtGui import QGuiApplication
 from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QWidget, QMenu, QMessageBox, QDialog
 from PyQt6.QtCore import QObject, pyqtSignal, QTimer, Qt
+
 import PyQt6.QtCore as QtCore
 
 try:
@@ -71,6 +72,9 @@ from electrum.simple_config import SimpleConfig
 from electrum.storage import WalletStorage
 from electrum.wizard import WizardViewState
 from electrum.keystore import load_keystore
+from electrum.bip32 import is_xprv
+
+from electrum.gui.common_qt.i18n import ElectrumTranslator
 
 from .util import read_QIcon, ColorScheme, custom_message_box, MessageBoxMixin, WWLabel
 from .main_window import ElectrumWindow
@@ -110,7 +114,6 @@ class QElectrumApplication(QApplication):
     alias_received_signal = pyqtSignal()
 
 
-
 class ElectrumGui(BaseElectrumGui, Logger):
 
     network_dialog: Optional['NetworkDialog']
@@ -137,6 +140,8 @@ class ElectrumGui(BaseElectrumGui, Logger):
         self.app = QElectrumApplication(sys.argv)
         self.app.installEventFilter(self.efilter)
         self.app.setWindowIcon(read_QIcon("electrum.png"))
+        self.translator = ElectrumTranslator()
+        self.app.installTranslator(self.translator)
         self._cleaned_up = False
         # timer
         self.timer = QTimer(self.app)
@@ -207,7 +212,8 @@ class ElectrumGui(BaseElectrumGui, Logger):
             m = self.tray.contextMenu()
             m.clear()
         network = self.daemon.network
-        m.addAction(_("Network"), self.show_network_dialog)
+        if network:
+            m.addAction(_("Network"), self.show_network_dialog)
         if network and network.lngossip:
             m.addAction(_("Lightning Network"), self.show_lightning_dialog)
         if network and network.local_watchtower:
@@ -463,6 +469,8 @@ class ElectrumGui(BaseElectrumGui, Logger):
                 xprv = k1.get_master_private_key(d['password'])
             else:
                 xprv = db.get('x1')['xprv']
+                if not is_xprv(xprv):
+                    xprv = k1
             _wiz_data_updates = {
                 'wallet_name': wallet_file,
                 'xprv1': xprv,
